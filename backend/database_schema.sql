@@ -7,9 +7,9 @@ SET search_path TO purchase_orders;
 -- WF Open 表
 CREATE TABLE wf_open (
     po VARCHAR(50),
-    pn VARCHAR(50) PRIMARY KEY,
+    pn VARCHAR(50),
     line INTEGER,
-    po_line VARCHAR(50),
+    po_line VARCHAR(50) PRIMARY KEY,
     description TEXT,
     qty DECIMAL(10, 2),
     net_price DECIMAL(10, 2),
@@ -24,11 +24,10 @@ CREATE TABLE wf_open (
     shipping_cost DECIMAL(10, 2),
     tracking_no VARCHAR(100),
     so_number VARCHAR(50),
-    latest_departure_date DATE
+    latest_departure_date DATE,
+    chinese_name VARCHAR(100),
+    unit VARCHAR(20)
 );
-
--- 为po_line字段添加唯一约束
-ALTER TABLE wf_open ADD CONSTRAINT uk_wf_open_po_line UNIQUE (po_line);
 
 -- WF Closed 表
 CREATE TABLE wf_closed (
@@ -36,7 +35,7 @@ CREATE TABLE wf_closed (
     po VARCHAR(50),
     pn VARCHAR(50),
     line INTEGER,
-    pn_line VARCHAR(50),
+    po_line VARCHAR(50),
     description TEXT,
     qty DECIMAL(10, 2),
     net_price DECIMAL(10, 2),
@@ -58,7 +57,7 @@ CREATE TABLE wf_closed (
 -- Non-WF Open 表
 CREATE TABLE non_wf_open (
     po VARCHAR(50),
-    pn VARCHAR(50) PRIMARY KEY,
+    pn VARCHAR(50),
     description TEXT,
     qty DECIMAL(10, 2),
     net_price DECIMAL(10, 2),
@@ -72,7 +71,9 @@ CREATE TABLE non_wf_open (
     shipping_cost DECIMAL(10, 2),
     tracking_no VARCHAR(100),
     so_number VARCHAR(50),
-    yes_not_paid VARCHAR(10)
+    yes_not_paid VARCHAR(10),
+    line VARCHAR(50),
+    po_line VARCHAR(100) PRIMARY KEY
 );
 
 -- Non-WF Closed 表
@@ -93,5 +94,7 @@ CREATE TABLE non_wf_closed (
     shipping_cost DECIMAL(10, 2),
     tracking_no VARCHAR(100),
     so_number VARCHAR(50),
-    yes_not_paid VARCHAR(10)
+    yes_not_paid VARCHAR(10),
+    line VARCHAR(50),
+    po_line VARCHAR(100)
 );

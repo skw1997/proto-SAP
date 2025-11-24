@@ -555,20 +555,37 @@ def insert_non_wf_open_data(data_entries):
                     if abs(calculated_total - total_price) > Decimal('0.02'):
                         raise ValueError(f"数据验证失败: qty({qty}) * net_price({net_price}) = {calculated_total}, 但total_price为{total_price}")
                 
-                # 使用INSERT ... ON CONFLICT语句，直接使用字段名
-                insert_query = """
+                # 使用INSERT ... ON CONFLICT语句，只插入非空字段
+                # 构建动态的列列表和值列表，只包含非空字段
+                columns = []
+                values = []
+                for key in ['po', 'pn', 'line', 'po_line', 'description', 'qty', 'net_price', 'total_price', 
+                           'req_date', 'eta_wfsz', 'shipping_mode', 'comment', 'po_placed_date', 
+                           'qc_result', 'shipping_cost', 'tracking_no', 'so_number', 'yes_not_paid']:
+                    if key in entry and entry[key] is not None:
+                        columns.append(key)
+                        values.append(f'%({key})s')
+                
+                if not columns:
+                    raise ValueError("没有有效的数据字段可以插入")
+                
+                # 构建INSERT语句
+                columns_str = ', '.join(columns)
+                values_str = ', '.join(values)
+                
+                # 构建UPDATE语句
+                update_set = []
+                for col in columns:
+                    if col != 'po_line':  # po_line是主键，不需要在UPDATE中重复
+                        update_set.append(f'{col} = EXCLUDED.{col}')
+                update_str = ', '.join(update_set) if update_set else 'po = EXCLUDED.po'
+                
+                insert_query = f"""
                 INSERT INTO purchase_orders.non_wf_open 
-                (po, pn, description, qty, net_price, total_price, req_date, po_placed_date)
-                VALUES (%(po)s, %(pn)s, %(description)s, %(qty)s, %(net_price)s, %(total_price)s, 
-                        %(req_date)s, %(po_placed_date)s)
-                ON CONFLICT (pn) DO UPDATE SET
-                    po = EXCLUDED.po,
-                    description = EXCLUDED.description,
-                    qty = EXCLUDED.qty,
-                    net_price = EXCLUDED.net_price,
-                    total_price = EXCLUDED.total_price,
-                    req_date = EXCLUDED.req_date,
-                    po_placed_date = EXCLUDED.po_placed_date
+                ({columns_str})
+                VALUES ({values_str})
+                ON CONFLICT (po_line) DO UPDATE SET
+                    {update_str}
                 """
                 
                 cursor.execute(insert_query, entry)
@@ -812,7 +829,7 @@ def extract_centurion_data(pdf_path):
                     # 解析项目行
                     parts = line.split()
                     if len(parts) >= 8:  # 确保有足够的部分
-                        item_number = parts[0]
+                        line_number = parts[0]  # 这是PDF表格中的Line number列
                         pn_part = parts[1] if len(parts) > 1 else ""
                         description_parts = []
                         quantity = ""
@@ -854,7 +871,7 @@ def extract_centurion_data(pdf_path):
                                             total_price = f"{currency_symbol}{total_price_val}"
                         
                         # 特殊处理第一个项目（510-000-054 ARMIS ELITE T2 TORCH CLIPS FRONT LEFT）
-                        if item_number == "1" and "510-000-" in line:
+                        if line_number == "1" and "510-000-" in line:
                             # 修正PN为完整的510-000-054
                             pn = "510-000-054"
                             description = "ARMIS ELITE T2 TORCH CLIPS FRONT LEFT"
@@ -889,12 +906,14 @@ def extract_centurion_data(pdf_path):
                                         description = description + " " + next_line
                                         i += 1  # 跳过下一行
                         
-                        print(f"Processing row: Item={item_number}, PN={pn}, Qty={quantity}")
+                        print(f"Processing row: Line={line_number}, PN={pn}, Qty={quantity}")
                         
                         # 创建数据行
                         data_row = {
                             "po": po_number,
-                            "pn": pn,  # Item number填入PN列
+                            "pn": pn,
+                            "line": int(line_number) if line_number.isdigit() else None,
+                            "po_line": f"{po_number}/{line_number}" if po_number and line_number else None,
                             "description": description,
                             "qty": parse_decimal(quantity.replace(',', '')),  # 去掉千位分隔符
                             "net_price": parse_decimal(unit_price),

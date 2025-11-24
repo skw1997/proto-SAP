@@ -196,10 +196,10 @@ class DatabaseManager:
             primary_key_field = 'id'  # 默认使用新的自增主键
             primary_key_value = pn
             
-            # 对于wf_open表，我们需要根据pn查找对应的po_line
-            if table_name in ['wf_open']:
+            # 对于wf_open和non_wf_open表，我们需要根据pn查找对应的po_line
+            if table_name in ['wf_open', 'non_wf_open']:
                 # 先根据pn查找po_line
-                find_po_line_query = "SELECT po_line FROM purchase_orders.wf_open WHERE pn = %s LIMIT 1"
+                find_po_line_query = f"SELECT po_line FROM purchase_orders.{table_name} WHERE pn = %s LIMIT 1"
                 cursor.execute(find_po_line_query, (pn,))
                 result = cursor.fetchone()
                 if result:
@@ -310,10 +310,10 @@ class DatabaseManager:
             primary_key_field = 'id'  # 默认使用新的自增主键
             primary_key_value = pn
             
-            # 对于wf_open表，我们需要根据pn查找对应的po_line
-            if table_name in ['wf_open']:
+            # 对于wf_open和non_wf_open表，我们需要根据pn查找对应的po_line
+            if table_name in ['wf_open', 'non_wf_open']:
                 # 先根据pn查找po_line
-                find_po_line_query = "SELECT po_line FROM purchase_orders.wf_open WHERE pn = %s LIMIT 1"
+                find_po_line_query = f"SELECT po_line FROM purchase_orders.{table_name} WHERE pn = %s LIMIT 1"
                 cursor.execute(find_po_line_query, (pn,))
                 result = cursor.fetchone()
                 if result:
@@ -402,17 +402,31 @@ class DatabaseManager:
         try:
             cursor = conn.cursor()
             
-            # 清理数据中的特殊值
+            # 获取表的实际列名
+            get_columns_query = """
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_schema = 'purchase_orders' 
+                AND table_name = %s
+            """
+            cursor.execute(get_columns_query, (table_name,))
+            existing_columns = set(row[0] for row in cursor.fetchall())
+            
+            # 清理数据中的特殊值，只保留表中存在的列
             cleaned_data = {}
             for k, v in data.items():
+                if k not in existing_columns:
+                    # 跳过不存在的列
+                    print(f"跳过不存在的列: {k}")
+                    continue
                 if v == 'None' or v == 'nan' or v == '':
                     cleaned_data[k] = None
                 else:
                     cleaned_data[k] = v
             
             # 根据表名确定主键字段和处理策略
-            if table_name == 'wf_open':
-                # WF Open表使用po_line作为主键，使用ON CONFLICT处理
+            if table_name in ['wf_open', 'non_wf_open']:
+                # WF Open和Non-WF Open表使用po_line作为主键，使用ON CONFLICT处理
                 columns = list(cleaned_data.keys())
                 values = list(cleaned_data.values())
                 
@@ -430,7 +444,7 @@ class DatabaseManager:
                     sql.Identifier(table_name),
                     sql.SQL(", ").join(sql.Identifier(col) for col in columns),
                     sql.SQL(", ").join(sql.Placeholder() * len(columns)),
-                    sql.SQL(", ".join(update_fields))
+                    sql.SQL(", ".join(update_fields) if update_fields else "po = EXCLUDED.po")
                 )
             else:
                 # 其他表使用默认的插入方式
@@ -545,9 +559,9 @@ class DatabaseManager:
             
             # 根据表名确定主键字段
             primary_key_field = 'id'  # 默认使用新的自增主键
-            if table_name in ['wf_open']:
+            if table_name in ['wf_open', 'non_wf_open']:
                 primary_key_field = 'po_line'
-            elif table_name in ['non_wf_open', 'wf_closed', 'non_wf_closed']:
+            elif table_name in ['wf_closed', 'non_wf_closed']:
                 # 对于新表结构，我们通过pn字段检查重复
                 primary_key_field = 'pn'
             
@@ -573,10 +587,7 @@ class DatabaseManager:
                         'primary_key': primary_key_value
                     })
             
-            cursor.close()
-            conn.close()
             return duplicates
-            
         except Exception as error:
             if conn:
                 try:
@@ -584,7 +595,7 @@ class DatabaseManager:
                     conn.close()
                 except:
                     pass
-            raise Exception(f"检查重复数据时出错: {error}")
+            raise error
 
 # 全局函数，供外部调用
 def get_table_data(table_name, search_column=None, search_value=None, sort_column=None, sort_order='asc'):

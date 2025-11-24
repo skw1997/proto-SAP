@@ -36,9 +36,9 @@ def create_wf_open_table(cursor):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS purchase_orders.wf_open (
             po VARCHAR(50),
-            pn VARCHAR(50) PRIMARY KEY,
+            pn VARCHAR(50),
             line INTEGER,
-            po_line VARCHAR(100),
+            po_line VARCHAR(50) PRIMARY KEY,
             description TEXT,
             qty DECIMAL(10, 2),
             net_price DECIMAL(10, 4),
@@ -68,10 +68,11 @@ def create_wf_closed_table(cursor):
     try:
         create_table_query = """
         CREATE TABLE IF NOT EXISTS purchase_orders.wf_closed (
+            id SERIAL PRIMARY KEY,
             po VARCHAR(50),
-            pn VARCHAR(50) PRIMARY KEY,
+            pn VARCHAR(50),
             line INTEGER,
-            po_line VARCHAR(100),
+            po_line VARCHAR(50),
             description TEXT,
             qty DECIMAL(10, 2),
             net_price DECIMAL(10, 4),
@@ -86,7 +87,9 @@ def create_wf_closed_table(cursor):
             shipping_cost DECIMAL(10, 2),
             tracking_no VARCHAR(100),
             so_number VARCHAR(50),
-            latest_departure_date DATE
+            latest_departure_date DATE,
+            chinese_name VARCHAR(100),
+            unit VARCHAR(20)
         )
         """
         cursor.execute(create_table_query)
@@ -100,7 +103,7 @@ def create_non_wf_open_table(cursor):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS purchase_orders.non_wf_open (
             po VARCHAR(50),
-            pn VARCHAR(50) PRIMARY KEY,
+            pn VARCHAR(50),
             description TEXT,
             qty DECIMAL(10, 2),
             net_price DECIMAL(10, 4),
@@ -114,7 +117,11 @@ def create_non_wf_open_table(cursor):
             shipping_cost DECIMAL(10, 2),
             tracking_no VARCHAR(100),
             so_number VARCHAR(50),
-            latest_departure_date DATE
+            latest_departure_date DATE,
+            qc_result VARCHAR(50),
+            yes_not_paid VARCHAR(10),
+            line VARCHAR(50),
+            po_line VARCHAR(100) PRIMARY KEY
         )
         """
         cursor.execute(create_table_query)
@@ -127,8 +134,9 @@ def create_non_wf_closed_table(cursor):
     try:
         create_table_query = """
         CREATE TABLE IF NOT EXISTS purchase_orders.non_wf_closed (
+            id SERIAL PRIMARY KEY,
             po VARCHAR(50),
-            pn VARCHAR(50) PRIMARY KEY,
+            pn VARCHAR(50),
             description TEXT,
             qty DECIMAL(10, 2),
             net_price DECIMAL(10, 4),
@@ -142,7 +150,11 @@ def create_non_wf_closed_table(cursor):
             shipping_cost DECIMAL(10, 2),
             tracking_no VARCHAR(100),
             so_number VARCHAR(50),
-            latest_departure_date DATE
+            latest_departure_date DATE,
+            purchaser VARCHAR(100),
+            yes_not_paid VARCHAR(10),
+            line VARCHAR(50),
+            po_line VARCHAR(100)
         )
         """
         cursor.execute(create_table_query)

@@ -11,6 +11,7 @@ from backend.utils.jwt_utils import verify_token
 # 导入路由蓝图
 from backend.routes.table_routes import table_bp
 from backend.routes.user_routes import user_bp
+from backend.routes.shipment_routes import shipment_bp
 
 # 获取项目根目录
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,6 +23,7 @@ app = Flask(__name__, template_folder=template_dir, static_folder=static_dir, st
 # 注册路由蓝图
 app.register_blueprint(table_bp)
 app.register_blueprint(user_bp)
+app.register_blueprint(shipment_bp)
 
 # 数据库连接配置
 db_config = get_db_config()
