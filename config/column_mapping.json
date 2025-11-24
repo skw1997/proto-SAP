@@ -1,0 +1,113 @@
+{
+  "wefabricate": {
+    "pdf_patterns": {
+      "purchase_order": "Purchase\\s+Order[\\s:]*([\\d-]+)",
+      "created_on": "Created\\s+on[\\s:]*([A-Za-z]+\\s+\\d{1,2},\\s*\\d{4})",
+      "contact_person": "Contact\\s+Person[\\s:]*([A-Za-z\\s]+)"
+    },
+    "table_columns": {
+      "item": "Item",
+      "description": "Description",
+      "quantity": "Quantity",
+      "net_price": "Net Price",
+      "net_value": "Net Value",
+      "schedule_lines": "Schedule Lines"
+    },
+    "database_mapping": {
+      "purchase_order": "po",
+      "item": "pn",
+      "item_number": "line",
+      "po_line": "po/line",
+      "description": "description",
+      "quantity": "qty",
+      "net_price": "net_price",
+      "net_value": "total_price",
+      "schedule_date": "req_date_wf",
+      "created_on": "po_placed_date",
+      "contact_person": "purchaser"
+    }
+  },
+  "centurion": {
+    "pdf_patterns": {
+      "purchase_order": "Purchase\\s+order\\s+Number[\\s\\r\\n]*([\\w\\d-]+)",
+      "date": "Date[\\s\\r\\n]*([\\d/]+)"
+    },
+    "table_columns": {
+      "item_number": "Item number",
+      "description": "Description",
+      "quantity_unit": "Quantity",
+      "unit_price": "Unit price",
+      "amount": "Amount",
+      "requested_receipt_date": "Requested receipt date"
+    },
+    "database_mapping": {
+      "purchase_order": "po",
+      "item_number": "pn",
+      "description": "description",
+      "quantity": "qty",
+      "unit_price": "net_price",
+      "amount": "total_price",
+      "receipt_date": "req_date",
+      "order_date": "po_placed_date"
+    }
+  },
+  "generic_wf": {
+    "pdf_patterns": {
+      "purchase_order": "PO[\\s:]*([\\d-]+)",
+      "date": "Date[\\s:]*([\\d/]+)"
+    },
+    "table_columns": {
+      "item": "Item",
+      "description": "Description",
+      "quantity": "Quantity",
+      "price": "Price",
+      "total": "Total"
+    },
+    "database_mapping": {
+      "purchase_order": "po",
+      "item": "pn",
+      "description": "description",
+      "quantity": "qty",
+      "price": "net_price",
+      "total": "total_price",
+      "date": "req_date_wf"
+    }
+  },
+  "generic_non_wf": {
+    "pdf_patterns": {
+      "purchase_order": "Order[\\s#]*([\\d-]+)",
+      "date": "Date[\\s:]*([\\d/]+)"
+    },
+    "table_columns": {
+      "item": "Item",
+      "description": "Description",
+      "quantity": "Qty",
+      "price": "Unit Price",
+      "total": "Amount"
+    },
+    "database_mapping": {
+      "purchase_order": "po",
+      "item": "pn",
+      "description": "description",
+      "quantity": "qty",
+      "price": "net_price",
+      "total": "total_price",
+      "date": "req_date"
+    }
+  },
+  "currency_mapping": {
+    "EUR": "€",
+    "USD": "$",
+    "GBP": "£",
+    "JPY": "¥",
+    "CNY": "¥"
+  },
+  "date_formats": [
+    "%b %d, %Y",
+    "%B %d, %Y",
+    "%d/%m/%Y",
+    "%Y-%m-%d",
+    "%m/%d/%Y",
+    "%d/%m/%Y"
+  ]
+}

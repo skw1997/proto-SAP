@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF采购订单导入</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+            background-color: #e9ecef;
+        }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .status-message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .progress-bar-container {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .file-name {
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        .file-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .status-uploading {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="mb-4">📄 PDF采购订单导入系统</h1>
+        
+        <!-- 用户信息区域 -->
+        <div class="mb-3 text-end">
+            <span id="currentUser">未登录</span>
+            <a href="/register.html" id="registerLink">注册</a>
+            <a href="/login.html" id="loginLink" style="display: inline-block;">登录</a>
+            <button id="logoutBtn" style="display: none;">退出</button>
+        </div>
+        
+        <!-- 导航按钮 -->
+        <div class="mb-3">
+            <a href="/" class="btn btn-primary">
+                <i class="bi bi-table"></i> 数据库管理
+            </a>
+            <a href="/pdf_import.html" class="btn btn-secondary">
+                <i class="bi bi-cloud-upload"></i> PDF导入
+            </a>
+        </div>
+        
+        <!-- 状态消息区域 -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <!-- 公司选择 -->
+        <div class="container-card">
+            <h3><i class="bi bi-building"></i> 选择公司</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="companySelect" class="form-label">选择公司</label>
+                    <select class="form-select" id="companySelect">
+                        <option value="">请选择公司</option>
+                        <!-- 公司选项将通过JavaScript动态加载 -->
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 文件上传区域 -->
+        <div class="container-card">
+            <h3><i class="bi bi-cloud-upload"></i> 上传PDF文件</h3>
+            <p class="text-muted">支持PDF格式，可多选</p>
+            
+            <div id="uploadArea" class="upload-area">
+                <i class="bi bi-file-earmark-arrow-up" style="font-size: 3rem; color: #6c757d;"></i>
+                <h4 class="mt-3">拖拽文件到此处或点击下方按钮选择文件</h4>
+                <p class="text-muted">支持PDF格式，可多选</p>
+                <input type="file" id="fileInput" multiple accept=".pdf" style="margin: 10px auto; display: block;">
+            </div>
+            
+            <!-- 文件列表 -->
+            <div id="fileList" class="file-list mt-3" style="display: none;">
+                <h5>已选择的文件：</h5>
+                <div id="fileListItems"></div>
+            </div>
+            
+            <!-- 导入按钮 -->
+            <div class="mt-3 text-center">
+                <button id="importBtn" class="btn btn-primary btn-lg" onclick="processAndImport()" disabled>
+                    <i class="bi bi-box-arrow-in-down"></i> 导入PDF文件
+                </button>
+            </div>
+        </div>
+        
+        <!-- 导入进度 -->
+        <div id="progressContainer" class="container-card" style="display: none;">
+            <h3><i class="bi bi-arrow-repeat"></i> 导入进度</h3>
+            <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar" style="width: 0%;"></div>
+            </div>
+            <div id="progressText" class="text-center text-muted">准备导入...</div>
+        </div>
+        
+        <!-- 导入结果 -->
+        <div id="resultContainer" class="container-card" style="display: none;">
+            <h3><i class="bi bi-check-circle"></i> 导入结果</h3>
+            <div id="resultContent"></div>
+            <div class="mt-3">
+                <button class="btn btn-secondary" onclick="resetImport()">
+                    <i class="bi bi-arrow-repeat"></i> 重新导入
+                </button>
+                <a href="/" class="btn btn-primary">
+                    <i class="bi bi-table"></i> 查看数据库
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 重复数据确认模态框 -->
+    <div class="modal fade" id="duplicateConfirmModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">检测到重复数据</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>以下数据的主键在数据库中已存在，是否要覆盖原有数据？</p>
+                    <div id="duplicateDataList" class="table-responsive">
+                        <!-- 重复数据列表将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmOverwriteBtn">确认覆盖</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 检查用户是否已登录
+        function checkLoginStatus() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                // 未登录，跳转到登录页面
+                window.location.href = '/login.html';
+                return false;
+            }
+            return true;
+        }
+        
+        // 在页面加载时检查登录状态
+        if (!checkLoginStatus()) {
+            // 如果未登录，阻止页面继续加载
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.innerHTML = '<div style="text-align: center; padding: 50px;"><h2>请先登录</h2><p>正在跳转到登录页面...</p></div>';
+            });
+        }
+        
+        // 全局变量
+        let currentFiles = [];
+        let uploadedFiles = []; // 用于存储已上传的文件历史记录
+        let isFileInputClick = false; // 用于防止重复触发的标志位
+        let pendingImportData = null; // 用于存储待导入的数据
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            if (!checkLoginStatus()) {
+                return;
+            }
+            
+            // 显示当前用户
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (currentUser) {
+                document.getElementById('currentUser').textContent = currentUser.email;
+                document.getElementById('logoutBtn').style.display = 'inline-block';
+                document.getElementById('loginLink').style.display = 'none';
+                document.getElementById('registerLink').style.display = 'none';
+            }
+            
+            // 加载公司列表
+            loadCompanyList();
+            
+            // 设置文件上传事件
+            setupFileUpload();
+            
+            // 设置确认覆盖按钮事件
+            document.getElementById('confirmOverwriteBtn').addEventListener('click', confirmOverwrite);
+            
+            // 添加退出按钮事件监听
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('currentUser');
+                window.location.href = '/login.html';
+            });
+        });
+        
+        // 带认证的fetch函数
+        function authenticatedFetch(url, options = {}) {
+            // 获取存储的token
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                // 如果没有token，跳转到登录页面
+                window.location.href = '/login.html';
+                throw new Error('未登录');
+            }
+            
+            // 添加认证头
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            // 添加用户邮箱头
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (currentUser && currentUser.email) {
+                options.headers['X-User-Email'] = currentUser.email;
+            }
+            
+            return fetch(url, options)
+                .then(response => {
+                    if (response.status === 401) {
+                        // Token无效或过期，清除本地存储并跳转到登录页面
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('currentUser');
+                        window.location.href = '/login.html';
+                        throw new Error('认证失败，请重新登录');
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    if (error.message === '认证失败，请重新登录') {
+                        throw error;
+                    }
+                    // 其他错误继续抛出
+                    throw error;
+                });
+        }
+        
+        // 加载公司列表
+        function loadCompanyList() {
+            // 这里应该调用实际的API来获取公司列表
+            // 暂时使用硬编码的公司列表
+            const companies = ['wefabricate', 'centurion'];
+            const select = document.getElementById('companySelect');
+            select.innerHTML = '<option value="">请选择公司</option>';
+            
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company;
+                option.textContent = company;
+                select.appendChild(option);
+            });
+        }
+        
+        // 设置文件上传事件
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            // 移除点击上传区域的事件监听器，避免重复触发问题
+            // 用户可以直接点击文件输入框或拖拽文件到上传区域
+            
+            // 文件选择变化时处理文件
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 拖拽上传事件
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+        }
+        
+        // 处理文件选择
+        function handleFileSelect(e) {
+            handleFiles(e.target.files);
+            // 清空文件输入框，以便可以再次选择相同的文件
+            e.target.value = '';
+        }
+        
+        // 处理文件
+        function handleFiles(files) {
+            // 将新文件添加到当前文件列表中
+            const newFiles = Array.from(files);
+            currentFiles = currentFiles.concat(newFiles);
+            updateFileList();
+            
+            // 启用导入按钮
+            if (currentFiles.length > 0) {
+                document.getElementById('importBtn').disabled = false;
+            } else {
+                document.getElementById('importBtn').disabled = true;
+            }
+        }
+        
+        // 删除文件
+        function removeFile(index) {
+            currentFiles.splice(index, 1);
+            updateFileList();
+            
+            // 更新导入按钮状态
+            if (currentFiles.length > 0) {
+                document.getElementById('importBtn').disabled = false;
+            } else {
+                document.getElementById('importBtn').disabled = true;
+            }
+        }
+        
+        // 更新文件列表显示
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            const fileListItems = document.getElementById('fileListItems');
+            
+            // 清空现有列表
+            fileListItems.innerHTML = '';
+            
+            if (currentFiles.length > 0) {
+                fileList.style.display = 'block';
+                
+                currentFiles.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <div class="file-info">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i>
+                            <span class="file-name">${file.name}</span>
+                        </div>
+                        <div>
+                            <span class="file-status status-pending">待处理</span>
+                            <button class="btn btn-sm btn-outline-danger ms-2" onclick="removeFile(${index})" title="删除文件">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    `;
+                    fileListItems.appendChild(fileItem);
+                });
+            } else {
+                fileList.style.display = 'none';
+            }
+        }
+        
+        // 处理并导入数据
+        function processAndImport() {
+            const company = document.getElementById('companySelect').value;
+            if (!company) {
+                showStatus('请选择公司', 'error');
+                return;
+            }
+            
+            if (currentFiles.length === 0) {
+                showStatus('请先选择PDF文件', 'error');
+                return;
+            }
+            
+            // 显示加载状态
+            showStatus('正在处理文件...', 'loading');
+            document.getElementById('importBtn').disabled = true;
+            
+            // 逐个处理文件
+            processFilesSequentially(0, company);
+        }
+        
+        // 逐个处理文件
+        function processFilesSequentially(index, company) {
+            if (index >= currentFiles.length) {
+                // 所有文件处理完成
+                showStatus(`处理完成！成功处理 ${currentFiles.length} 个文件`, 'success');
+                document.getElementById('importBtn').disabled = false;
+                
+                // 清空当前文件列表
+                currentFiles = [];
+                updateFileList();
+                return;
+            }
+            
+            const file = currentFiles[index];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('company', company);
+            
+            // 更新文件状态
+            const fileItems = document.querySelectorAll('.file-item');
+            if (fileItems[index]) {
+                fileItems[index].querySelector('.file-status').className = 'file-status status-uploading';
+                fileItems[index].querySelector('.file-status').textContent = '处理中...';
+            }
+            
+            // 发送文件处理请求
+            authenticatedFetch('/api/process_pdf', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 检查是否有重复数据
+                    if (data.duplicates && data.duplicates.length > 0) {
+                        // 显示重复数据确认对话框
+                        showDuplicateConfirmDialog(data.duplicates, data.data, data.table_name, index, company);
+                    } else {
+                        // 没有重复数据，直接插入
+                        insertData(data.data, data.table_name, index, company);
+                    }
+                } else {
+                    // 处理失败
+                    if (fileItems[index]) {
+                        fileItems[index].querySelector('.file-status').className = 'file-status status-error';
+                        fileItems[index].querySelector('.file-status').textContent = '处理失败';
+                    }
+                    showStatus(`处理文件 ${file.name} 时出错: ${data.error}`, 'error');
+                    document.getElementById('importBtn').disabled = false;
+                }
+            })
+            .catch(error => {
+                if (fileItems[index]) {
+                    fileItems[index].querySelector('.file-status').className = 'file-status status-error';
+                    fileItems[index].querySelector('.file-status').textContent = '处理失败';
+                }
+                showStatus(`处理文件 ${file.name} 时出错: ${error}`, 'error');
+                document.getElementById('importBtn').disabled = false;
+            });
+        }
+        
+        // 显示重复数据确认对话框
+        function showDuplicateConfirmDialog(duplicates, allData, tableName, fileIndex, company) {
+            // 保存数据用于后续处理
+            pendingImportData = {
+                allData: allData,
+                tableName: tableName,
+                fileIndex: fileIndex,
+                company: company
+            };
+            
+            // 生成重复数据列表
+            const duplicateList = document.getElementById('duplicateDataList');
+            let html = '<table class="table table-striped table-bordered">';
+            html += '<thead><tr><th>主键</th><th>描述</th><th>数量</th><th>单价</th><th>总价</th></tr></thead><tbody>';
+            
+            duplicates.forEach(dup => {
+                const data = dup.data;
+                html += '<tr>';
+                html += `<td>${dup.primary_key}</td>`;
+                html += `<td>${data.description || ''}</td>`;
+                html += `<td>${data.qty || ''}</td>`;
+                html += `<td>${data.net_price || ''}</td>`;
+                html += `<td>${data.total_price || ''}</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            duplicateList.innerHTML = html;
+            
+            // 显示模态框
+            const modal = new bootstrap.Modal(document.getElementById('duplicateConfirmModal'));
+            modal.show();
+        }
+        
+        // 确认覆盖重复数据
+        function confirmOverwrite() {
+            // 关闭模态框
+            bootstrap.Modal.getInstance(document.getElementById('duplicateConfirmModal')).hide();
+            
+            // 插入数据
+            if (pendingImportData) {
+                insertData(pendingImportData.allData, pendingImportData.tableName, pendingImportData.fileIndex, pendingImportData.company);
+                pendingImportData = null;
+            }
+        }
+        
+        // 插入数据
+        function insertData(data, tableName, fileIndex, company) {
+            // 发送插入请求
+            authenticatedFetch(`/api/insert_data/${tableName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: data })
+            })
+            .then(response => response.json())
+            .then(result => {
+                const fileItems = document.querySelectorAll('.file-item');
+                if (result.success) {
+                    if (fileItems[fileIndex]) {
+                        fileItems[fileIndex].querySelector('.file-status').className = 'file-status status-success';
+                        fileItems[fileIndex].querySelector('.file-status').textContent = '处理完成';
+                    }
+                    showStatus(`文件处理完成，成功插入 ${result.count} 条数据`, 'success');
+                    
+                    // 继续处理下一个文件
+                    setTimeout(() => {
+                        processFilesSequentially(fileIndex + 1, company);
+                    }, 1000);
+                } else {
+                    if (fileItems[fileIndex]) {
+                        fileItems[fileIndex].querySelector('.file-status').className = 'file-status status-error';
+                        fileItems[fileIndex].querySelector('.file-status').textContent = '插入失败';
+                    }
+                    showStatus(`插入数据时出错: ${result.error}`, 'error');
+                    document.getElementById('importBtn').disabled = false;
+                }
+            })
+            .catch(error => {
+                const fileItems = document.querySelectorAll('.file-item');
+                if (fileItems[fileIndex]) {
+                    fileItems[fileIndex].querySelector('.file-status').className = 'file-status status-error';
+                    fileItems[fileIndex].querySelector('.file-status').textContent = '插入失败';
+                }
+                showStatus(`插入数据时出错: ${error}`, 'error');
+                document.getElementById('importBtn').disabled = false;
+            });
+        }
+        
+        // 显示状态消息
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status-message ${type}`;
+            statusElement.style.display = 'block';
+            
+            // 3秒后自动隐藏成功消息
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // 隐藏状态消息
+        function hideStatus() {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.style.display = 'none';
+        }
+        
+        // 重置导入
+        function resetImport() {
+            // 隐藏结果容器
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            // 清空文件列表
+            currentFiles = [];
+            updateFileList();
+            
+            // 重置导入按钮
+            document.getElementById('importBtn').disabled = true;
+            
+            // 隐藏状态消息
+            hideStatus();
+        }
+    </script>
+</body>
+</html>
