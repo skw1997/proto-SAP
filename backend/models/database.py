@@ -87,6 +87,27 @@ class DatabaseManager:
                     add_unit_query = f"ALTER TABLE purchase_orders.{table_name} ADD COLUMN unit VARCHAR(20)"
                     cursor.execute(add_unit_query)
             
+            # 对于 closed 表，添加 id 列（如果不存在）
+            if table_name in ['wf_closed', 'non_wf_closed']:
+                # 检查 id 列是否存在
+                check_id_query = """
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'purchase_orders' 
+                    AND table_name = %s 
+                    AND column_name = 'id'
+                """
+                cursor.execute(check_id_query, (table_name,))
+                if not cursor.fetchone():
+                    # id 列不存在，添加之
+                    add_id_query = f"ALTER TABLE purchase_orders.{table_name} ADD COLUMN id SERIAL PRIMARY KEY"
+                    try:
+                        cursor.execute(add_id_query)
+                    except:
+                        # 如果带 PRIMARY KEY 失败，仅添加不带 PK 的 id 列
+                        add_id_query = f"ALTER TABLE purchase_orders.{table_name} ADD COLUMN id SERIAL"
+                        cursor.execute(add_id_query)
+            
             # 构建查询语句
             if search_column and search_value:
                 # 构建带搜索条件的查询
@@ -287,14 +308,15 @@ class DatabaseManager:
                     pass
             return False, f"更新数据时出错: {error}"
     
-    def delete_row(self, table_name, pn, user_email=None):
+    def delete_row(self, table_name, key, user_email=None, key_field='pn'):
         """
         删除表中的数据
         
         Args:
             table_name: 表名
-            pn: 主键值
+            key: 主键值
             user_email: 用户邮箱（用于记录操作日志）
+            key_field: 主键字段名，默认为 'pn'
             
         Returns:
             tuple: (success, message)
@@ -306,35 +328,15 @@ class DatabaseManager:
         try:
             cursor = conn.cursor()
             
-            # 确定主键字段
-            primary_key_field = 'id'  # 默认使用新的自增主键
-            primary_key_value = pn
-            
-            # 对于wf_open和non_wf_open表，我们需要根据pn查找对应的po_line
-            if table_name in ['wf_open', 'non_wf_open']:
-                # 先根据pn查找po_line
-                find_po_line_query = f"SELECT po_line FROM purchase_orders.{table_name} WHERE pn = %s LIMIT 1"
-                cursor.execute(find_po_line_query, (pn,))
-                result = cursor.fetchone()
-                if result:
-                    primary_key_field = 'po_line'
-                    primary_key_value = result[0]  # 使用找到的po_line作为主键
-                else:
-                    # 如果找不到对应的po_line，则直接使用pn进行查找
-                    primary_key_field = 'pn'
-            elif table_name in ['wf_closed', 'non_wf_closed']:
-                # 对于这些表，我们仍然使用pn作为业务主键进行查找
-                primary_key_field = 'pn'
-            
             # 获取删除前的记录数据用于日志记录
             deleted_record = None
             if user_email:
                 try:
                     select_query = sql.SQL("SELECT * FROM purchase_orders.{} WHERE {} = %s").format(
                         sql.Identifier(table_name),
-                        sql.Identifier(primary_key_field)
+                        sql.Identifier(key_field)
                     )
-                    cursor.execute(select_query, (primary_key_value,))
+                    cursor.execute(select_query, (key,))
                     deleted_record_row = cursor.fetchone()
                     
                     # 获取列名
@@ -347,9 +349,9 @@ class DatabaseManager:
             # 执行删除
             delete_query = sql.SQL("DELETE FROM purchase_orders.{} WHERE {} = %s").format(
                 sql.Identifier(table_name),
-                sql.Identifier(primary_key_field)
+                sql.Identifier(key_field)
             )
-            cursor.execute(delete_query, (primary_key_value,))
+            cursor.execute(delete_query, (key,))
             affected_rows = cursor.rowcount
             conn.commit()
             

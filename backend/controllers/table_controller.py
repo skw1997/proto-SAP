@@ -78,10 +78,10 @@ class TableController:
                 'error': str(e)
             }
     
-    def delete_row(self, table_name, pn, user_email=None):
+    def delete_row(self, table_name, key, user_email=None, key_field='pn'):
         """删除行数据"""
         try:
-            success, message = self.db_manager.delete_row(table_name, pn, user_email)
+            success, message = self.db_manager.delete_row(table_name, key, user_email, key_field)
             return {
                 'success': success,
                 'message': message

@@ -133,13 +133,34 @@ def insert_row(table_name):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@table_bp.route('/tables/<table_name>/<pn>', methods=['DELETE'])
-def delete_row(table_name, pn):
+@table_bp.route('/tables/<table_name>/<key>', methods=['DELETE'])
+def delete_row(table_name, key):
     """删除表中的数据"""
     try:
         # 从请求头获取用户邮箱
         user_email = request.headers.get('X-User-Email', 'unknown@example.com')
-        result = table_controller.delete_row(table_name, pn, user_email)
+        # 从查询参数获取关键字段名，如果没有则默认为 'pn'
+        key_field = request.args.get('key_field', 'pn')
+        result = table_controller.delete_row(table_name, key, user_email, key_field)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@table_bp.route('/tables/<table_name>', methods=['DELETE'])
+def delete_row_by_body(table_name):
+    """删除表中的数据（使用请求体传递参数）"""
+    try:
+        # 从请求头获取用户邮箱
+        user_email = request.headers.get('X-User-Email', 'unknown@example.com')
+        # 从请求体获取 key 和 key_field
+        data = request.json or {}
+        key = data.get('key')
+        key_field = data.get('key_field', 'pn')
+        
+        if not key:
+            return jsonify({'success': False, 'message': '缺少删除键值'}), 400
+        
+        result = table_controller.delete_row(table_name, key, user_email, key_field)
         return jsonify(result)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
