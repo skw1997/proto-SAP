@@ -244,19 +244,14 @@ def extract_wefaricate_data(pdf_path):
                             else:
                                 print(f"无效的Item编号: '{cell0}'")
                         
-                        # 提取ID (必须符合xxxx-xxxx-xxxx格式)
+                        # 提取ID (不一定需要符合xxxx-xxxx-xxxx格式)
                         if len(row) > 1:
                             id_part = str(row[1]).strip() if row[1] else ""
                             print(f"提取到ID: '{id_part}'")
-                            # 验证ID格式必须符合xxxx-xxxx-xxxx模式
+                            # 验证ID格式(如果存在就必须符合xxxx-xxxx-xxxx模式)
                             if id_part and not re.match(r'^\d{4}-\d{4}-\d{4}$', id_part):
                                 print(f"跳过不符合格式的ID: '{id_part}'")
                                 # 不立即跳过，而是继续处理其他字段，稍后再决定是否添加数据行
-                        
-                        # 如果没有有效的ID，跳过这行
-                        if not id_part:
-                            print(f"跳过缺少ID的行: Item={item}, ID='{id_part}'")
-                            continue
                         
                         # 提取描述
                         if len(row) > 2:
@@ -300,12 +295,12 @@ def extract_wefaricate_data(pdf_path):
                         
                         print(f"Processing row: Item={item}, ID={id_part}, Qty={quantity}, Net Price={net_price}, Net Value={net_value}")
                         
-                        # 验证ID格式
-                        id_valid = id_part and re.match(r'^\d{4}-\d{4}-\d{4}$', id_part)
+                        # 验证ID格式（ID可以为空，但如果存在就必须符合格式）
+                        id_valid = (not id_part) or re.match(r'^\d{4}-\d{4}-\d{4}$', id_part)
                         
-                        # 只有当有有效数据时才添加
-                        if id_valid and item:
-                            print(f"添加有效数据行: Item={item}, ID={id_part}")
+                        # 只要有有效的Item编号和ID格式正确，就添加数据（允许ID为空）
+                        if item and id_valid:
+                            print(f"添加有效数据行: Item={item}, ID={id_part if id_part else 'N/A'}")
                             # 去掉前导零
                             item_no_zero = remove_leading_zeros(item) if item else ""
                             
@@ -313,7 +308,7 @@ def extract_wefaricate_data(pdf_path):
                             data_row_info = {
                                 "item": item,
                                 "item_no_zero": item_no_zero,
-                                "id_part": id_part,
+                                "id_part": id_part,  # 可以为空
                                 "description": description,
                                 "quantity": quantity,
                                 "net_price": net_price,
@@ -324,12 +319,10 @@ def extract_wefaricate_data(pdf_path):
                             page_info['data_rows'].append(data_row_info)
                         else:
                             print(f"跳过无效数据行: Item='{item}', ID='{id_part}'")
-                            # 如果是因为缺少item或id_part而跳过，记录详细信息
+                            # 记录详细信息
                             if not item:
                                 print(f"  原因: 缺少Item编号")
-                            if not id_part:
-                                print(f"  原因: 缺少ID")
-                            elif not re.match(r'^\d{4}-\d{4}-\d{4}$', id_part):
+                            if id_part and not re.match(r'^\d{4}-\d{4}-\d{4}$', id_part):
                                 print(f"  原因: ID格式不正确")
                 
             # 存储页面信息
@@ -1386,9 +1379,9 @@ def insert_non_wf_open_magic_fx_data(data_entries):
                 # 构建动态的列列表
                 columns = []
                 values = []
-                # 确保 'pn' 咺是被包括的（MAGIC FX填表需要）
-                mandatory_columns = ['po', 'pn', 'line', 'po_line', 'description', 'qty', 'net_price', 'total_price']
-                optional_columns = ['req_date', 'po_placed_date']
+                # 允许PN为空，只要求po、line、description、qty、net_price、total_price
+                mandatory_columns = ['po', 'line', 'po_line', 'description', 'qty', 'net_price', 'total_price']
+                optional_columns = ['pn', 'req_date', 'po_placed_date']
                 
                 # 先添加强制列
                 for key in mandatory_columns:

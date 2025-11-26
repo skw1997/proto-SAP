@@ -33,9 +33,9 @@ def create_tables():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wf_open (
                 po VARCHAR(50),
-                pn VARCHAR(50) PRIMARY KEY,
+                pn VARCHAR(50) NULL,
                 line INTEGER,
-                po_line VARCHAR(50),
+                po_line VARCHAR(50) PRIMARY KEY,
                 description TEXT,
                 qty DECIMAL(10, 2),
                 net_price DECIMAL(10, 2),
@@ -59,7 +59,7 @@ def create_tables():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS wf_closed (
                 po VARCHAR(50),
-                pn VARCHAR(50) PRIMARY KEY,
+                pn VARCHAR(50) NULL,
                 line INTEGER,
                 pn_line VARCHAR(50),
                 description TEXT,
@@ -86,7 +86,7 @@ def create_tables():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS non_wf_open (
                 po VARCHAR(50),
-                pn VARCHAR(50) PRIMARY KEY,
+                pn VARCHAR(50) NULL,
                 description TEXT,
                 qty DECIMAL(10, 2),
                 net_price DECIMAL(10, 2),
@@ -100,7 +100,9 @@ def create_tables():
                 shipping_cost DECIMAL(10, 2),
                 tracking_no VARCHAR(100),
                 so_number VARCHAR(50),
-                yes_not_paid VARCHAR(10)
+                yes_not_paid VARCHAR(10),
+                line VARCHAR(50),
+                po_line VARCHAR(100) PRIMARY KEY
             )
         """)
         
@@ -108,8 +110,9 @@ def create_tables():
         print("创建Non-WF Closed表...")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS non_wf_closed (
+                id SERIAL PRIMARY KEY,
                 po VARCHAR(50),
-                pn VARCHAR(50) PRIMARY KEY,
+                pn VARCHAR(50) NULL,
                 description TEXT,
                 qty DECIMAL(10, 2),
                 net_price DECIMAL(10, 2),

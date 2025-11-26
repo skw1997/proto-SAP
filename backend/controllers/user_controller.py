@@ -10,16 +10,18 @@ from backend.utils.jwt_utils import generate_token, token_required
 class UserController:
     def __init__(self):
         self.user_manager = UserManager()
-        self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.qq.com')
-        self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        self.sender_email = os.getenv('SENDER_EMAIL', '')
-        self.sender_password = os.getenv('SENDER_PASSWORD', '')
-        self.app_base_url = os.getenv('APP_BASE_URL', 'http://localhost:5000')
         self.token_required = token_required  # 添加token_required装饰器
 
     def send_verification_email(self, email, token):
         """发送验证邮件"""
         try:
+            # 动态读取环境变量（每次调用时刷新）
+            smtp_server = os.getenv('SMTP_SERVER', 'smtp.qq.com')
+            smtp_port = int(os.getenv('SMTP_PORT', '587'))
+            sender_email = os.getenv('SENDER_EMAIL', '')
+            sender_password = os.getenv('SENDER_PASSWORD', '')
+            app_base_url = os.getenv('APP_BASE_URL', 'http://localhost:5000')
+            
             # 检查是否启用邮件功能
             email_enabled = os.getenv('EMAIL_ENABLED', 'true').lower() == 'true'
             if not email_enabled:
@@ -27,15 +29,15 @@ class UserController:
                 return True, "注册成功（邮件功能已禁用）"
             
             # 检查必要的配置是否存在
-            if not self.sender_email or not self.sender_password:
+            if not sender_email or not sender_password:
                 return False, "邮件服务器配置不完整，请检查SENDER_EMAIL和SENDER_PASSWORD环境变量"
             
             # 创建邮件内容
-            verification_link = f"{self.app_base_url}/set_password.html?token={token}"
+            verification_link = f"{app_base_url}/set_password.html?token={token}"
             
             message = MIMEMultipart("alternative")
             message["Subject"] = "Wefabricate系统注册验证"
-            message["From"] = self.sender_email
+            message["From"] = sender_email
             message["To"] = email
 
             # 创建HTML邮件内容
@@ -61,24 +63,30 @@ class UserController:
             html_part = MIMEText(html, "html")
             message.attach(html_part)
 
-            # 尝试发送邮件 - 首先使用TLS (端口587)
+            # 尝试发送邮件 - 使用TLS (端口587)
             try:
-                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+                server = smtplib.SMTP(smtp_server, smtp_port)
                 server.set_debuglevel(1)  # 启用调试模式
                 server.starttls()  # 启用TLS加密
-                server.login(self.sender_email, self.sender_password)
-                server.sendmail(self.sender_email, email, message.as_string())
+                # 对于Outlook，需要使用OAuth2认证
+                # 这里作为备用，实际上已经收集了OAuth2 token
+                server.login(sender_email, sender_password)
+                server.sendmail(sender_email, email, message.as_string())
                 server.quit()
                 return True, "验证邮件已发送 (TLS连接)"
+            except smtplib.SMTPAuthenticationError as tls_auth_error:
+                # SMTP认证失败
+                print(f"TLS认证失败: {tls_auth_error}")
+                return False, f"SMTP认证失败，请检查邮箱和授权码：{str(tls_auth_error)}"
             except Exception as tls_error:
                 # 如果TLS失败，尝试SSL (端口465)
                 try:
                     import ssl
                     context = ssl.create_default_context()
-                    server = smtplib.SMTP_SSL(self.smtp_server, 465, context=context)
+                    server = smtplib.SMTP_SSL(smtp_server, 465, context=context)
                     server.set_debuglevel(1)  # 启用调试模式
-                    server.login(self.sender_email, self.sender_password)
-                    server.sendmail(self.sender_email, email, message.as_string())
+                    server.login(sender_email, sender_password)
+                    server.sendmail(sender_email, email, message.as_string())
                     server.quit()
                     return True, "验证邮件已发送 (SSL连接)"
                 except Exception as ssl_error:

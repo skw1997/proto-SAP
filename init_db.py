@@ -36,7 +36,7 @@ def create_wf_open_table(cursor):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS purchase_orders.wf_open (
             po VARCHAR(50),
-            pn VARCHAR(50),
+            pn VARCHAR(50) NULL,
             line INTEGER,
             po_line VARCHAR(50) PRIMARY KEY,
             description TEXT,
@@ -70,7 +70,7 @@ def create_wf_closed_table(cursor):
         CREATE TABLE IF NOT EXISTS purchase_orders.wf_closed (
             id SERIAL PRIMARY KEY,
             po VARCHAR(50),
-            pn VARCHAR(50),
+            pn VARCHAR(50) NULL,
             line INTEGER,
             po_line VARCHAR(50),
             description TEXT,
@@ -103,7 +103,7 @@ def create_non_wf_open_table(cursor):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS purchase_orders.non_wf_open (
             po VARCHAR(50),
-            pn VARCHAR(50),
+            pn VARCHAR(50) NULL,
             description TEXT,
             qty DECIMAL(10, 2),
             net_price DECIMAL(10, 4),
@@ -136,7 +136,7 @@ def create_non_wf_closed_table(cursor):
         CREATE TABLE IF NOT EXISTS purchase_orders.non_wf_closed (
             id SERIAL PRIMARY KEY,
             po VARCHAR(50),
-            pn VARCHAR(50),
+            pn VARCHAR(50) NULL,
             description TEXT,
             qty DECIMAL(10, 2),
             net_price DECIMAL(10, 4),
